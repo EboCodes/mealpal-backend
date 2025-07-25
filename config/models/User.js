@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   // ✅ School field for filtering
   school: {
     type: String,
-    required: false, // Set to true later if needed
+    required: true, 
   },
 
   // ✅ Vendor-specific fields

@@ -73,7 +73,7 @@ router.post("/", upload.single("img"), async (req, res) => {
 });
 
 // ✅ PUT /api/meals/:id
-router.put("/:id", upload.single("image"), async (req, res) => {
+router.put("/:id", upload.single("img"), async (req, res) => {
   try {
     const meal = await Meal.findById(req.params.id);
     if (!meal) return res.status(404).json({ message: "Meal not found" });

@@ -5,11 +5,17 @@ const dotenv = require("dotenv");
 const cloudinary = require("cloudinary").v2;
 const path = require("path");
 
-
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// ✅ CORS Setup for Vercel Frontend
+app.use(cors({
+  origin: ["https://skoolmealpal.vercel.app"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // ✅ Serve uploaded files
@@ -35,7 +41,7 @@ mongoose
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/meals", require("./routes/mealRoutes"));
 app.use("/api/vendor", require("./routes/vendorRoutes"));
-app.use("/api/orders", require("./routes/orderRoutes")); // ✅ Orders route
+app.use("/api/orders", require("./routes/orderRoutes"));
 
 // ✅ Health Check
 app.get("/", (req, res) => {

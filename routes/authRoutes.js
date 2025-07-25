@@ -3,11 +3,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
 
-const User = require("../models/User"); 
+const User = require("../models/User");
 
 // REGISTER
 router.post("/register", async (req, res) => {
-  const { name, email, password, role, school } = req.body; 
+  const { name, email, password, role, school } = req.body;
 
   try {
     const existing = await User.findOne({ email });
@@ -20,11 +20,11 @@ router.post("/register", async (req, res) => {
       email,
       password: hashed,
       role,
-      school, 
+      school,
     });
 
     const token = jwt.sign(
-      { id: newUser._id, role: newUser.role },
+      { id: newUser._id, role: newUser.role, school: newUser.school },
       process.env.JWT_SECRET
     );
 
@@ -33,7 +33,7 @@ router.post("/register", async (req, res) => {
       role: newUser.role,
       name: newUser.name,
       email: newUser.email,
-      school: newUser.school, 
+      school: newUser.school,
     });
   } catch (err) {
     console.error(err);
@@ -53,7 +53,7 @@ router.post("/login", async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
 
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user._id, role: user.role, school: user.school },
       process.env.JWT_SECRET
     );
 
@@ -62,7 +62,7 @@ router.post("/login", async (req, res) => {
       role: user.role,
       name: user.name,
       email: user.email,
-      school: user.school, 
+      school: user.school,
     });
   } catch (err) {
     console.error(err);
