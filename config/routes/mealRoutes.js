@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const Meal = require("../models/Meal");
+const Vendor = require("../models/User"); // ✅ FIX: import vendor from user model
 
 // Multer setup
 const storage = multer.memoryStorage();
@@ -27,14 +28,14 @@ router.get("/", async (req, res) => {
     const { school, sort } = req.query;
 
     let query = {};
-    let sortOption = { createdAt: -1 }; // default: newest first
+    let sortOption = { createdAt: -1 };
 
     if (school) query.school = school;
     if (sort === "price-asc") sortOption = { price: 1 };
     else if (sort === "price-desc") sortOption = { price: -1 };
 
     const meals = await Meal.find(query)
-      .populate("vendor", "businessName school") // ✅ get vendor info
+      .populate("vendor", "name school")
       .sort(sortOption);
 
     res.json(meals);
@@ -44,7 +45,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ POST /api/meals - vendor adds a meal
+// ✅ POST /api/meals
 router.post("/", upload.single("img"), async (req, res) => {
   try {
     const { name, price, vendorId } = req.body;
@@ -60,7 +61,7 @@ router.post("/", upload.single("img"), async (req, res) => {
       price,
       img: result.secure_url,
       vendor: vendor._id,
-      school: vendor.school,
+      school: vendor.school, // ✅ Save school from vendor
     });
 
     await newMeal.save();
