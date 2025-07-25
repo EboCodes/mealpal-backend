@@ -121,4 +121,21 @@ router.get("/", async (req, res) => {
   }
 });
 
+// ✅ GET /api/vendors?school=UNILAG
+router.get("/", async (req, res) => {
+  try {
+    const { school } = req.query;
+
+    let query = {};
+    if (school) query.school = school;
+
+    const vendors = await Vendor.find(query).select("-password"); // exclude password
+    res.json(vendors);
+  } catch (err) {
+    console.error("Fetch vendors error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 module.exports = router;

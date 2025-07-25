@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Order = require("../models/Order");
+const Meal = require("../models/Meal");
 
 // ✅ POST /api/orders - Save a new order
 router.post("/", async (req, res) => {
@@ -24,6 +25,15 @@ router.post("/", async (req, res) => {
     });
 
     await order.save();
+
+    // ✅ Increment purchaseCount for each meal
+    for (const item of items) {
+      await Meal.findByIdAndUpdate(
+        item.mealId, // assumes each item has mealId
+        { $inc: { purchaseCount: item.quantity || 1 } }
+      );
+    }
+
     res.status(201).json(order);
   } catch (err) {
     console.error("Order save error:", err);
@@ -71,5 +81,7 @@ router.patch("/:id/status", async (req, res) => {
     res.status(500).json({ message: "Failed to update status" });
   }
 });
+
+
 
 module.exports = router;
