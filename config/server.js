@@ -38,10 +38,10 @@ app.use("/api/orders", require("./routes/orderRoutes")); // ✅ Orders route
 
 // ✅ Health Check
 app.get("/", (req, res) => {
-  res.send("MealPal API is running 🚀");
+  res.send("MealPal API is live!");
 });
 
 // 🚀 Start server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });

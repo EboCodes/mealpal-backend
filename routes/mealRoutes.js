@@ -3,9 +3,9 @@ const router = express.Router();
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const Meal = require("../models/Meal");
-const Vendor = require("../models/User"); // ✅ FIX: import vendor from user model
+const Vendor = require("../models/User"); // Vendor is from User model
 
-// Multer setup
+// Multer setup for buffer upload
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -27,10 +27,8 @@ router.get("/", async (req, res) => {
   try {
     const { school, sort } = req.query;
 
-    let query = {};
+    const query = school ? { school } : {};
     let sortOption = { createdAt: -1 };
-
-    if (school) query.school = school;
     if (sort === "price-asc") sortOption = { price: 1 };
     else if (sort === "price-desc") sortOption = { price: -1 };
 
@@ -49,19 +47,21 @@ router.get("/", async (req, res) => {
 router.post("/", upload.single("img"), async (req, res) => {
   try {
     const { name, price, vendorId } = req.body;
-    const fileStr = req.file.buffer;
+
+    if (!name || !price || !vendorId || !req.file)
+      return res.status(400).json({ error: "All fields are required" });
 
     const vendor = await Vendor.findById(vendorId);
     if (!vendor) return res.status(404).json({ error: "Vendor not found" });
 
-    const result = await streamUpload(fileStr);
+    const result = await streamUpload(req.file.buffer);
 
     const newMeal = new Meal({
       name,
       price,
       img: result.secure_url,
       vendor: vendor._id,
-      school: vendor.school, // ✅ Save school from vendor
+      school: vendor.school,
     });
 
     await newMeal.save();
@@ -116,9 +116,8 @@ router.delete("/:id", async (req, res) => {
 
 // ✅ GET /api/meals/featured?school=UNILAG
 router.get("/featured", async (req, res) => {
-  const { school } = req.query;
-
   try {
+    const { school } = req.query;
     if (!school) return res.status(400).json({ error: "School is required." });
 
     const featuredMeals = await Meal.find({ school })

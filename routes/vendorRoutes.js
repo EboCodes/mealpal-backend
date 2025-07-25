@@ -8,7 +8,7 @@ const User = require("../models/User");
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Upload helper
+// Cloudinary upload helper
 const streamUpload = (buffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -22,7 +22,7 @@ const streamUpload = (buffer) => {
   });
 };
 
-// PUT /api/vendor/profile - update profile info
+// ✅ PUT /api/vendor/profile - Update vendor profile
 router.put("/profile", upload.single("coverImage"), async (req, res) => {
   try {
     const { email, description } = req.body;
@@ -61,7 +61,7 @@ router.put("/profile", upload.single("coverImage"), async (req, res) => {
   }
 });
 
-// GET /api/vendor/:name - get vendor profile by name
+// ✅ GET /api/vendor/:name - Get vendor profile by name
 router.get("/:name", async (req, res) => {
   try {
     const vendor = await User.findOne({ name: req.params.name });
@@ -81,7 +81,7 @@ router.get("/:name", async (req, res) => {
   }
 });
 
-// POST /api/vendor/:name/rate - add a rating to vendor
+// ✅ POST /api/vendor/:name/rate - Rate a vendor
 router.post("/:name/rate", async (req, res) => {
   try {
     const vendor = await User.findOne({ name: req.params.name });
@@ -104,38 +104,28 @@ router.post("/:name/rate", async (req, res) => {
   }
 });
 
-// GET /api/vendor - list all vendors
+// ✅ GET /api/vendor - List all vendors OR filter by school
 router.get("/", async (req, res) => {
   try {
-    const vendors = await User.find({ role: "vendor" });
-    const list = vendors.map((v) => ({
+    const { school } = req.query;
+
+    const filter = { role: "vendor" };
+    if (school) filter.school = school;
+
+    const vendors = await User.find(filter);
+
+    const formatted = vendors.map((v) => ({
       name: v.name,
       description: v.description || "",
       coverImage: v.coverImage || "",
       averageRating: v.getAverageRating?.() || 0,
     }));
-    res.json(list);
-  } catch (err) {
-    console.error("Vendor list error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
-// ✅ GET /api/vendors?school=UNILAG
-router.get("/", async (req, res) => {
-  try {
-    const { school } = req.query;
-
-    let query = {};
-    if (school) query.school = school;
-
-    const vendors = await Vendor.find(query).select("-password"); // exclude password
-    res.json(vendors);
+    res.json(formatted);
   } catch (err) {
     console.error("Fetch vendors error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 module.exports = router;

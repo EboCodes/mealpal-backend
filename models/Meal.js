@@ -7,7 +7,7 @@ const MealSchema = new mongoose.Schema(
     img: String,
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Vendor",
+      ref: "User", 
     },
     school: String,
     purchaseCount: {

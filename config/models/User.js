@@ -24,13 +24,13 @@ const userSchema = new mongoose.Schema({
     default: "user",
   },
 
-  // ✅ Add school field
+  // ✅ School field for filtering
   school: {
     type: String,
-    required: false, // You can make this true later if needed
+    required: false, // Set to true later if needed
   },
 
-  // ✅ Vendor profile fields
+  // ✅ Vendor-specific fields
   description: {
     type: String,
     default: "Delicious meals made with love and care.",
@@ -44,8 +44,9 @@ const userSchema = new mongoose.Schema({
   ratings: {
     type: [Number],
     default: [],
-  }
-});
+  },
+}, { timestamps: true }); // ✅ Add timestamps
+  
 
 // 🧠 Method to compute average rating
 userSchema.methods.getAverageRating = function () {
