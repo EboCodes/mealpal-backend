@@ -22,6 +22,38 @@ const streamUpload = (buffer) => {
   });
 };
 
+// 🔧 IMPORTANT: Move /featured route BEFORE the general "/" route
+// ✅ GET /api/meals/featured?school=UNILAG
+router.get("/featured", async (req, res) => {
+  try {
+    const { school } = req.query;
+    if (!school) return res.status(400).json({ error: "School is required." });
+
+    // Get meals with highest purchase count, but fallback to recent if all have 0 purchases
+    let featuredMeals = await Meal.find({ school })
+      .populate("vendor", "name school")
+      .sort({ purchaseCount: -1, createdAt: -1 })
+      .limit(6);
+
+    // If no meals have purchase counts > 0, get the most recent meals
+    if (featuredMeals.every(meal => meal.purchaseCount === 0)) {
+      featuredMeals = await Meal.find({ school })
+        .populate("vendor", "name school")
+        .sort({ createdAt: -1 })
+        .limit(6);
+    }
+
+    // 🔧 FIX: Return in the format expected by frontend
+    res.json({ meals: featuredMeals });
+  } catch (err) {
+    console.error("Error fetching featured meals:", err);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Note: Purchase count tracking is now handled in orderRoutes.js 
+// when orders are created, so no separate endpoint needed here.
+
 // ✅ GET /api/meals?school=UNILAG&sort=price-desc
 router.get("/", async (req, res) => {
   try {
@@ -111,23 +143,6 @@ router.delete("/:id", async (req, res) => {
   } catch (err) {
     console.error("Delete meal error:", err);
     res.status(500).json({ message: "Server error" });
-  }
-});
-
-// ✅ GET /api/meals/featured?school=UNILAG
-router.get("/featured", async (req, res) => {
-  try {
-    const { school } = req.query;
-    if (!school) return res.status(400).json({ error: "School is required." });
-
-    const featuredMeals = await Meal.find({ school })
-      .sort({ purchaseCount: -1 })
-      .limit(6);
-
-    res.json(featuredMeals);
-  } catch (err) {
-    console.error("Error fetching featured meals:", err);
-    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
