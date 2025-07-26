@@ -11,10 +11,14 @@ const app = express();
 
 // ✅ CORS Setup for Vercel Frontend
 app.use(cors({
-  origin: ["https://skoolmealpal.vercel.app"],
+  origin: [
+    "http://localhost:5173",           // ✅ Local dev frontend
+    "https://skoolmealpal.vercel.app"  // ✅ Production frontend
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
+
 
 app.use(express.json());
 
