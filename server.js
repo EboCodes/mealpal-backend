@@ -2,10 +2,16 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const cloudinary = require("cloudinary").v2;
 const path = require("path");
 
 dotenv.config();
+
+const { validateEnv } = require("./config/validateEnv");
+validateEnv(); // fails fast if required env vars are missing
+
+require("./config/cloudinary"); // configures the cloudinary SDK as a side effect
+
+const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
@@ -22,13 +28,6 @@ app.use(express.json());
 
 // ✅ Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// 🌩️ Cloudinary config
-cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUD_KEY,
-  api_secret: process.env.CLOUD_SECRET,
-});
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
@@ -49,6 +48,10 @@ app.use("/api/orders", require("./routes/orderRoutes"));
 app.get("/", (req, res) => {
   res.send("MealPal API is live!");
 });
+
+// 404 + centralized error handling (must be registered last)
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // 🚀 Start server
 app.listen(PORT, () => {
