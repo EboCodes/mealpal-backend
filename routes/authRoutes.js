@@ -1,12 +1,22 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const rateLimit = require("express-rate-limit");
 const router = express.Router();
 
 const User = require("../models/User");
 
+// Limits login/register to 10 attempts per 15 minutes per IP to slow down brute-force attempts
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Too many attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // REGISTER
-router.post("/register", async (req, res) => {
+router.post("/register", authLimiter, async (req, res) => {
   const { name, email, password, role, school } = req.body;
 
   try {
@@ -24,8 +34,9 @@ router.post("/register", async (req, res) => {
     });
 
     const token = jwt.sign(
-      { id: newUser._id, role: newUser.role, school: newUser.school },
-      process.env.JWT_SECRET
+      { id: newUser._id, role: newUser.role, school: newUser.school, email: newUser.email, name: newUser.name },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
     res.status(201).json({
@@ -42,7 +53,7 @@ router.post("/register", async (req, res) => {
 });
 
 // LOGIN
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -53,8 +64,9 @@ router.post("/login", async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
 
     const token = jwt.sign(
-      { id: user._id, role: user.role, school: user.school },
-      process.env.JWT_SECRET
+      { id: user._id, role: user.role, school: user.school, email: user.email, name: user.name },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
     res.status(200).json({

@@ -4,6 +4,7 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const Meal = require("../models/Meal");
 const Vendor = require("../models/User"); // Vendor is from User model
+const { verifyToken, requireRole } = require("../middleware/auth");
 
 // Multer setup for buffer upload
 const storage = multer.memoryStorage();
@@ -76,11 +77,12 @@ router.get("/", async (req, res) => {
 });
 
 // ✅ POST /api/meals
-router.post("/", upload.single("img"), async (req, res) => {
+router.post("/", verifyToken, requireRole("vendor"), upload.single("img"), async (req, res) => {
   try {
-    const { name, price, vendorId } = req.body;
+    const { name, price } = req.body;
+    const vendorId = req.user.id; // trust the token, not the request body
 
-    if (!name || !price || !vendorId || !req.file)
+    if (!name || !price || !req.file)
       return res.status(400).json({ error: "All fields are required" });
 
     const vendor = await Vendor.findById(vendorId);
@@ -105,12 +107,12 @@ router.post("/", upload.single("img"), async (req, res) => {
 });
 
 // ✅ PUT /api/meals/:id
-router.put("/:id", upload.single("img"), async (req, res) => {
+router.put("/:id", verifyToken, requireRole("vendor"), upload.single("img"), async (req, res) => {
   try {
     const meal = await Meal.findById(req.params.id);
     if (!meal) return res.status(404).json({ message: "Meal not found" });
 
-    if (req.body.vendor !== String(meal.vendor))
+    if (String(meal.vendor) !== req.user.id)
       return res.status(403).json({ message: "Unauthorized" });
 
     if (req.file) {
@@ -130,12 +132,12 @@ router.put("/:id", upload.single("img"), async (req, res) => {
 });
 
 // ✅ DELETE /api/meals/:id
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", verifyToken, requireRole("vendor"), async (req, res) => {
   try {
     const meal = await Meal.findById(req.params.id);
     if (!meal) return res.status(404).json({ message: "Meal not found" });
 
-    if (req.body.vendor !== String(meal.vendor))
+    if (String(meal.vendor) !== req.user.id)
       return res.status(403).json({ message: "Unauthorized" });
 
     await Meal.findByIdAndDelete(req.params.id);

@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const User = require("../models/User");
+const { verifyToken, requireRole } = require("../middleware/auth");
 
 // Multer setup
 const storage = multer.memoryStorage();
@@ -23,9 +24,9 @@ const streamUpload = (buffer) => {
 };
 
 // ✅ PUT /api/vendor/profile - Update vendor profile
-router.put("/profile", upload.single("coverImage"), async (req, res) => {
+router.put("/profile", verifyToken, requireRole("vendor"), upload.single("coverImage"), async (req, res) => {
   try {
-    const { email, description } = req.body;
+    const { description } = req.body;
     let coverImageUrl;
 
     if (req.file) {
@@ -38,8 +39,8 @@ router.put("/profile", upload.single("coverImage"), async (req, res) => {
       ...(coverImageUrl && { coverImage: coverImageUrl }),
     };
 
-    const updatedUser = await User.findOneAndUpdate(
-      { email },
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id, // update the logged-in vendor's own profile only
       { $set: updateData },
       { new: true }
     );
@@ -82,7 +83,7 @@ router.get("/:name", async (req, res) => {
 });
 
 // ✅ POST /api/vendor/:name/rate - Rate a vendor
-router.post("/:name/rate", async (req, res) => {
+router.post("/:name/rate", verifyToken, async (req, res) => {
   try {
     const vendor = await User.findOne({ name: req.params.name });
     if (!vendor) return res.status(404).json({ message: "Vendor not found" });

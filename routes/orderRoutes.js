@@ -2,12 +2,12 @@ const express = require("express");
 const router = express.Router();
 const Order = require("../models/Order");
 const Meal = require("../models/Meal");
+const { verifyToken, requireRole } = require("../middleware/auth");
 
 // ✅ POST /api/orders - Save a new order
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, async (req, res) => {
   try {
     const {
-      userEmail,
       items,
       total,
       delivery,
@@ -15,7 +15,8 @@ router.post("/", async (req, res) => {
       phoneNumber
     } = req.body;
 
-    console.log("Creating order with items:", items); // Debug log
+    // Use the verified token's email, not whatever the client sends
+    const userEmail = req.user.email;
 
     const order = new Order({
       userEmail,
@@ -28,22 +29,17 @@ router.post("/", async (req, res) => {
 
     await order.save();
 
-    // ✅ Increment purchaseCount for each meal
-    // 🔧 FIX: Use _id instead of mealId since that's what your cart uses
+    // ✅ Increment purchaseCount for each meal (handles both _id and mealId field names)
     for (const item of items) {
-      const mealId = item._id || item.mealId; // Handle both field names
+      const mealId = item._id || item.mealId;
       const quantity = item.quantity || 1;
-      
+
       if (mealId) {
-        console.log(`Updating purchase count for meal ${mealId} by ${quantity}`); // Debug log
-        
         await Meal.findByIdAndUpdate(
           mealId,
           { $inc: { purchaseCount: quantity } },
           { new: true }
         );
-      } else {
-        console.warn("Item missing meal ID:", item);
       }
     }
 
@@ -58,8 +54,13 @@ router.post("/", async (req, res) => {
 });
 
 // ✅ GET /api/orders/:email - Get all orders by a user
-router.get("/:email", async (req, res) => {
+router.get("/:email", verifyToken, async (req, res) => {
   try {
+    const isSelf = req.user.email?.toLowerCase() === req.params.email.toLowerCase();
+    if (!isSelf && req.user.role !== "vendor") {
+      return res.status(403).json({ message: "Not authorized to view these orders" });
+    }
+
     const orders = await Order.find({ userEmail: req.params.email }).sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
@@ -69,8 +70,13 @@ router.get("/:email", async (req, res) => {
 });
 
 // ✅ GET /api/orders/vendor/:vendorName - Vendor-specific orders
-router.get("/vendor/:vendorName", async (req, res) => {
+router.get("/vendor/:vendorName", verifyToken, requireRole("vendor"), async (req, res) => {
   const { vendorName } = req.params;
+
+  if (req.user.name !== vendorName) {
+    return res.status(403).json({ message: "Not authorized to view these orders" });
+  }
+
   try {
     const orders = await Order.find({
       "items.vendor": vendorName
@@ -84,18 +90,21 @@ router.get("/vendor/:vendorName", async (req, res) => {
 });
 
 // ✅ PATCH /api/orders/:id/status - Update order status
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", verifyToken, requireRole("vendor"), async (req, res) => {
   try {
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
-    
+    const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    
+
+    const ownsItem = order.items.some((item) => item.vendor === req.user.name);
+    if (!ownsItem) {
+      return res.status(403).json({ message: "Not authorized to update this order" });
+    }
+
+    order.status = req.body.status;
+    await order.save();
+
     res.json(order);
   } catch (err) {
     console.error("Status update error:", err);
@@ -104,7 +113,10 @@ router.patch("/:id/status", async (req, res) => {
 });
 
 // 🆕 GET /api/orders - Get all orders (admin view)
-router.get("/", async (req, res) => {
+// NOTE: there's no "admin" role in the User model yet — this is locked to
+// "vendor" for now so it's not wide open. Add a real admin role before
+// exposing this more broadly.
+router.get("/", verifyToken, requireRole("vendor"), async (req, res) => {
   try {
     const { school, status, limit = 50 } = req.query;
     
