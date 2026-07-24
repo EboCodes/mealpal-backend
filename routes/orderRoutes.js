@@ -118,17 +118,26 @@ router.patch("/:id/status", verifyToken, requireRole("vendor"), async (req, res)
 // exposing this more broadly.
 router.get("/", verifyToken, requireRole("vendor"), async (req, res) => {
   try {
-    const { school, status, limit = 50 } = req.query;
-    
+    const { school, status } = req.query;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const skip = (page - 1) * limit;
+
     let query = {};
     if (school) query.school = school;
     if (status) query.status = status;
-    
-    const orders = await Order.find(query)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
-      
-    res.json(orders);
+
+    const [orders, total] = await Promise.all([
+      Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Order.countDocuments(query),
+    ]);
+
+    res.json({
+      orders,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalResults: total,
+    });
   } catch (err) {
     console.error("Fetch all orders error:", err);
     res.status(500).json({ message: "Server error" });

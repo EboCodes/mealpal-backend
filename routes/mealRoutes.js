@@ -55,21 +55,34 @@ router.get("/featured", async (req, res) => {
 // Note: Purchase count tracking is now handled in orderRoutes.js 
 // when orders are created, so no separate endpoint needed here.
 
-// ✅ GET /api/meals?school=UNILAG&sort=price-desc
+// ✅ GET /api/meals?school=UNILAG&sort=price-desc&page=1&limit=20
 router.get("/", async (req, res) => {
   try {
     const { school, sort } = req.query;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const skip = (page - 1) * limit;
 
     const query = school ? { school } : {};
     let sortOption = { createdAt: -1 };
     if (sort === "price-asc") sortOption = { price: 1 };
     else if (sort === "price-desc") sortOption = { price: -1 };
 
-    const meals = await Meal.find(query)
-      .populate("vendor", "name school")
-      .sort(sortOption);
+    const [meals, total] = await Promise.all([
+      Meal.find(query)
+        .populate("vendor", "name school")
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limit),
+      Meal.countDocuments(query),
+    ]);
 
-    res.json(meals);
+    res.json({
+      meals,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalResults: total,
+    });
   } catch (err) {
     console.error("Fetch meals error:", err);
     res.status(500).json({ message: "Server error" });
